@@ -78,6 +78,22 @@ func Model(c *config.ModelArgument) error {
 	g := gen.NewGenerator(genConfig)
 
 	g.UseDB(db)
+	g.WithImportPkgPath("github.com/shopspring/decimal")
+	// 关键：全局类型覆盖 - 必须在 UseDB 之后调用
+	// 使用正确的函数签名：func(columnType gorm.ColumnType) (dataType string)
+	g.WithDataTypeMap(map[string]func(columnType gorm.ColumnType) (dataType string){
+		"decimal": func(columnType gorm.ColumnType) (dataType string) {
+			return "decimal.Decimal"
+		},
+		"tinyint": func(columnType gorm.ColumnType) (dataType string) {
+			// columnType.ColumnType() 形如 "tinyint(1)" 或 "tinyint(4)"
+			columnTypeStr, _ := columnType.ColumnType()
+			if columnTypeStr == "tinyint(1)" {
+				return "int8"
+			}
+			return "int32"
+		},
+	})
 
 	models, err := genModels(g, db, c.Tables)
 	if err != nil {

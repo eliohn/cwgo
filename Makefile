@@ -11,3 +11,9 @@ test:
 vet:
 	@${TOOLS_SHELL} vet
 	@echo "vet check finished"
+
+build:
+	go build -o cwgo.exe .
+
+install: build
+	cp cwgo.exe C:\Users\yihui\go\bin

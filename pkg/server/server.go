@@ -55,7 +55,7 @@ func Server(c *config.ServerArgument) error {
 		defer kx_registry.RemoveExtension()
 
 		out := new(bytes.Buffer)
-		cmd := args.BuildCmd(out)
+		cmd, _ := args.BuildCmd(out)
 		err = cmd.Run()
 		if err != nil {
 			if args.Use != "" {
