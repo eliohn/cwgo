@@ -66,7 +66,6 @@ const RepoTestImplTemplate = `package repo
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -74,35 +73,15 @@ import (
 	
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
-func init() {
-     _ = os.Setenv("C_PRE", "../../conf")
-     _ = os.Setenv("GO_ENV", "dev")
-}
-
-func setupTestDB(t *testing.T) *gorm.DB {
-	// 从环境变量或配置中获取MySQL连接信息
-	dsn := os.Getenv("TEST_MYSQL_DSN")
-	if dsn == "" {
-		// 默认的测试数据库连接信息
-		dsn = "test_user:test_password@tcp(127.0.0.1:3306)/test_db?charset=utf8mb4&parseTime=True&loc=Local"
-	}
-	
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	require.NoError(t, err)
-	
-	// 自动迁移表结构
-	err = db.AutoMigrate(&model.{{.ModelName}}{})
-	require.NoError(t, err)
-	
-	return db
-}
-
 func TestNew{{.ModelName}}Repo(t *testing.T) {
 	db := setupTestDB(t)
+	// 自动迁移表结构
+	err := db.AutoMigrate(&model.{{.ModelName}}{})
+	require.NoError(t, err)
+	
 	repo := New{{.ModelName}}Repo(db)
 	
 	assert.NotNil(t, repo)
@@ -111,6 +90,10 @@ func TestNew{{.ModelName}}Repo(t *testing.T) {
 
 func Test{{.ModelName}}Repo_Create(t *testing.T) {
 	db := setupTestDB(t)
+	// 自动迁移表结构
+	err := db.AutoMigrate(&model.{{.ModelName}}{})
+	require.NoError(t, err)
+	
 	repo := New{{.ModelName}}Repo(db)
 	ctx := context.Background()
 	
@@ -127,6 +110,10 @@ func Test{{.ModelName}}Repo_Create(t *testing.T) {
 
 func Test{{.ModelName}}Repo_GetByID(t *testing.T) {
 	db := setupTestDB(t)
+	// 自动迁移表结构
+	err := db.AutoMigrate(&model.{{.ModelName}}{})
+	require.NoError(t, err)
+	
 	repo := New{{.ModelName}}Repo(db)
 	ctx := context.Background()
 	
@@ -258,5 +245,38 @@ func Test{{.ModelName}}Repo_Count(t *testing.T) {
 	count, err := repo.Count(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(3), count)
+}
+`
+
+// RepoTestUtilTemplate Repo 测试工具模板
+const RepoTestUtilTemplate = `package repo
+
+import (
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+)
+
+func init() {
+     _ = os.Setenv("C_PRE", "../../conf")
+     _ = os.Setenv("GO_ENV", "dev")
+}
+
+// setupTestDB 设置测试数据库连接
+func setupTestDB(t *testing.T) *gorm.DB {
+	// 从环境变量或配置中获取MySQL连接信息
+	dsn := os.Getenv("TEST_MYSQL_DSN")
+	if dsn == "" {
+		// 默认的测试数据库连接信息
+		dsn = "test_user:test_password@tcp(127.0.0.1:3306)/test_db?charset=utf8mb4&parseTime=True&loc=Local"
+	}
+	
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	require.NoError(t, err)
+	
+	return db
 }
 `

@@ -147,6 +147,12 @@ func genRepositories(g *gen.Generator, tables []string) error {
 		Mode: packages.NeedName,
 		Dir:  filePath,
 	})
+	// 首先生成测试工具文件（只生成一次）
+	testUtilFile := filepath.Join(outPath, "test_util_test.go")
+	if err := generateFile(testUtilFile, templates.RepoTestUtilTemplate, map[string]interface{}{}); err != nil {
+		return fmt.Errorf("generate test util file failed: %w", err)
+	}
+
 	// 为每个表生成 Repo
 	for _, tableName := range tables {
 		modelName := toCamelCase(tableName)
@@ -158,12 +164,12 @@ func genRepositories(g *gen.Generator, tables []string) error {
 			"ModelPkgPath":   pkgs[0].PkgPath,
 			"IDType":         "uint",
 		}
-		// 只生成实现文件
+		// 生成实现文件
 		implFile := filepath.Join(outPath, fmt.Sprintf("%s.repo.go", modelNameLower))
 		if err := generateFile(implFile, templates.RepoImplTemplate, data); err != nil {
 			return fmt.Errorf("generate implementation file failed: %w", err)
 		}
-		// 只生成实现文件
+		// 生成测试文件
 		testFile := filepath.Join(outPath, fmt.Sprintf("%s.repo_test.go", modelNameLower))
 		if err := generateFile(testFile, templates.RepoTestImplTemplate, data); err != nil {
 			return fmt.Errorf("generate test implementation file failed: %w", err)
