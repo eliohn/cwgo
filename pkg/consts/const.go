@@ -72,6 +72,8 @@ const (
 	DefaultDbOutDir       = "biz/dal/query"
 	DefaultDocModelOutDir = "biz/doc/model"
 	DefaultDocDaoOutDir   = "biz/doc/dao"
+	DefaultDbRepoDir      = "biz/dal/repo"
+	DefaultDbModelDir     = "biz/dal/model"
 	Standard              = "standard"
 	StandardV2            = "standard_v2"
 	CurrentDir            = "."

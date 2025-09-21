@@ -35,10 +35,14 @@ func Fallback(c *config.FallbackArgument) error {
 	case consts.KitexTool:
 		os.Args = c.Args
 		var args kargs.Arguments
-		args.ParseArgs(kitex.Version, "", []string{})
+		//args.ParseArgs(kitex.Version, "", []string{})
+		//
+		//out := new(bytes.Buffer)
+		//cmd, _ := args.BuildCmd(out)
+		args.ParseArgs(kitex.Version)
 
 		out := new(bytes.Buffer)
-		cmd, _ := args.BuildCmd(out)
+		cmd := args.BuildCmd(out)
 		err := cmd.Run()
 		if err != nil {
 			if args.Use != "" {

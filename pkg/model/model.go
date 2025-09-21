@@ -18,12 +18,17 @@ package model
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"text/template"
 
+	"golang.org/x/tools/go/packages"
 	"gorm.io/rawsql"
 
 	"github.com/cloudwego/cwgo/config"
 	"github.com/cloudwego/cwgo/pkg/consts"
+	"github.com/cloudwego/cwgo/pkg/model/templates"
 
 	"gorm.io/gen"
 	"gorm.io/gorm"
@@ -95,16 +100,20 @@ func Model(c *config.ModelArgument) error {
 		},
 	})
 
-	models, err := genModels(g, db, c.Tables)
+	_, err := genModels(g, db, c.Tables)
 	if err != nil {
 		return err
 	}
-
-	if !c.OnlyModel {
-		g.ApplyBasic(models...)
-	}
+	//if !c.OnlyModel {
+	//g.ApplyBasic(models...)
+	//}
+	//
 
 	g.Execute()
+	err = genRepositories(g, c.Tables)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -124,4 +133,89 @@ func genModels(g *gen.Generator, db *gorm.DB, tables []string) (models []interfa
 		models[i] = g.GenerateModel(tableName)
 	}
 	return models, nil
+}
+
+// genRepositories 生成 Repo 层代码
+func genRepositories(g *gen.Generator, tables []string) error {
+	outPath := consts.DefaultDbRepoDir
+	// 创建 repo 目录
+	if err := os.MkdirAll(consts.DefaultDbRepoDir, 0755); err != nil {
+		return fmt.Errorf("create repo directory failed: %w", err)
+	}
+	filePath, _ := getModelOutputPath(g)
+	pkgs, _ := packages.Load(&packages.Config{
+		Mode: packages.NeedName,
+		Dir:  filePath,
+	})
+	// 为每个表生成 Repo
+	for _, tableName := range tables {
+		modelName := toCamelCase(tableName)
+		modelNameLower := strings.ToLower(modelName)
+
+		data := map[string]interface{}{
+			"ModelName":      modelName,
+			"ModelNameLower": modelNameLower,
+			"ModelPkgPath":   pkgs[0].PkgPath,
+			"IDType":         "uint",
+		}
+		// 只生成实现文件
+		implFile := filepath.Join(outPath, fmt.Sprintf("%s.repo.go", modelNameLower))
+		if err := generateFile(implFile, templates.RepoImplTemplate, data); err != nil {
+			return fmt.Errorf("generate implementation file failed: %w", err)
+		}
+		// 只生成实现文件
+		testFile := filepath.Join(outPath, fmt.Sprintf("%s.repo_test.go", modelNameLower))
+		if err := generateFile(testFile, templates.RepoTestImplTemplate, data); err != nil {
+			return fmt.Errorf("generate test implementation file failed: %w", err)
+		}
+	}
+
+	return nil
+}
+func getModelOutputPath(g *gen.Generator) (outPath string, err error) {
+	if strings.Contains(g.ModelPkgPath, string(os.PathSeparator)) {
+		outPath, err = filepath.Abs(g.ModelPkgPath)
+		if err != nil {
+			return "", fmt.Errorf("cannot parse model pkg path: %w", err)
+		}
+	} else {
+		outPath = filepath.Join(filepath.Dir(g.OutPath), g.ModelPkgPath)
+	}
+	return outPath + string(os.PathSeparator), nil
+}
+
+// generateFile 根据模板生成文件
+func generateFile(filename, templateStr string, data map[string]interface{}) error {
+	tmpl, err := template.New("").Parse(templateStr)
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return tmpl.Execute(file, data)
+}
+
+// toCamelCase 将表名转换为 Go 结构体名
+// 例如: wallets -> Wallets, user_profiles -> UserProfiles
+func toCamelCase(tableName string) string {
+	// 将下划线分隔的字符串转换为驼峰命名
+	parts := strings.Split(tableName, "_")
+	var result strings.Builder
+
+	for _, part := range parts {
+		if len(part) > 0 {
+			// 首字母大写
+			result.WriteString(strings.ToUpper(part[:1]))
+			if len(part) > 1 {
+				result.WriteString(part[1:])
+			}
+		}
+	}
+
+	return result.String()
 }

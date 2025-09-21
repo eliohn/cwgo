@@ -58,7 +58,8 @@ func Client(c *config.ClientArgument) error {
 		defer kx_registry.RemoveExtension()
 
 		out := new(bytes.Buffer)
-		cmd, _ := args.BuildCmd(out)
+		//cmd, _ := args.BuildCmd(out)
+		cmd := args.BuildCmd(out)
 		err = cmd.Run()
 		if err != nil {
 			if args.Use != "" {
