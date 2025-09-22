@@ -156,13 +156,13 @@ func genRepositories(g *gen.Generator, tables []string) error {
 	// 为每个表生成 Repo
 	for _, tableName := range tables {
 		modelName := toCamelCase(tableName)
-		modelNameLower := strings.ToLower(modelName)
+		modelNameLower := toLowerCamelCase(tableName)
 
 		data := map[string]interface{}{
 			"ModelName":      modelName,
 			"ModelNameLower": modelNameLower,
 			"ModelPkgPath":   pkgs[0].PkgPath,
-			"IDType":         "uint",
+			"IDType":         "int64",
 		}
 		// 生成实现文件
 		implFile := filepath.Join(outPath, fmt.Sprintf("%s.repo.go", modelNameLower))
@@ -224,4 +224,18 @@ func toCamelCase(tableName string) string {
 	}
 
 	return result.String()
+}
+
+// toLowerCamelCase 将表名转换为首字母小写的驼峰命名
+// 例如: wallets -> wallets, user_profiles -> userProfiles
+func toLowerCamelCase(tableName string) string {
+	// 先转换为驼峰命名
+	camel := toCamelCase(tableName)
+
+	// 将首字母转为小写
+	if len(camel) > 0 {
+		return strings.ToLower(camel[:1]) + camel[1:]
+	}
+
+	return camel
 }
