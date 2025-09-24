@@ -161,6 +161,7 @@ const (
 	TypeTag       = "type_tag"
 	HexTag        = "hex"
 	SQLDir        = "sql_dir"
+	ConfigFile    = "config_file"
 )
 
 const (

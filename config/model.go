@@ -17,10 +17,13 @@
 package config
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/cloudwego/cwgo/pkg/consts"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v3"
 )
 
 type ModelArgument struct {
@@ -38,12 +41,22 @@ type ModelArgument struct {
 	FieldWithIndexTag bool
 	FieldWithTypeTag  bool
 	SQLDir            string
+	ConfigFile        string               // 配置文件路径
+	FieldMappings     []FieldMappingConfig // YAML 配置的字段映射
+}
+
+// FieldMappingConfig YAML 配置中的字段映射
+type FieldMappingConfig struct {
+	FieldKey string `yaml:"field_key"`        // 字段键，如 "admin_audit_log.status"
+	Type     string `yaml:"type"`             // 目标类型
+	Import   string `yaml:"import,omitempty"` // 导入包
 }
 
 func NewModelArgument() *ModelArgument {
 	return &ModelArgument{
-		OutPath: consts.DefaultDbOutDir,
-		OutFile: consts.DefaultDbOutFile,
+		OutPath:       consts.DefaultDbOutDir,
+		OutFile:       consts.DefaultDbOutFile,
+		FieldMappings: make([]FieldMappingConfig, 0),
 	}
 }
 
@@ -62,5 +75,38 @@ func (c *ModelArgument) ParseCli(ctx *cli.Context) error {
 	c.FieldWithIndexTag = ctx.Bool(consts.IndexTag)
 	c.FieldWithTypeTag = ctx.Bool(consts.TypeTag)
 	c.SQLDir = ctx.String(consts.SQLDir)
+	c.ConfigFile = ctx.String(consts.ConfigFile)
+
+	// 解析配置文件
+	if c.ConfigFile != "" {
+		if err := c.parseConfigFile(); err != nil {
+			return fmt.Errorf("parse config file failed: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// parseConfigFile 解析 YAML 配置文件
+func (c *ModelArgument) parseConfigFile() error {
+	data, err := os.ReadFile(c.ConfigFile)
+	if err != nil {
+		return fmt.Errorf("read config file failed: %w", err)
+	}
+
+	var config struct {
+		FieldMapping map[string]FieldMappingConfig `yaml:"fieldMapping"`
+	}
+
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("unmarshal config file failed: %w", err)
+	}
+
+	// 将 YAML 配置转换为内部格式
+	for fieldKey, fieldConfig := range config.FieldMapping {
+		fieldConfig.FieldKey = fieldKey
+		c.FieldMappings = append(c.FieldMappings, fieldConfig)
+	}
+
 	return nil
 }

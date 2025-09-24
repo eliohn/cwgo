@@ -23,6 +23,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/cloudwego/kitex/pkg/klog"
 	"golang.org/x/tools/go/packages"
 	"gorm.io/rawsql"
 
@@ -83,7 +84,19 @@ func Model(c *config.ModelArgument) error {
 	g := gen.NewGenerator(genConfig)
 
 	g.UseDB(db)
-	g.WithImportPkgPath("github.com/shopspring/decimal")
+	imports := []string{
+		"github.com/shopspring/decimal",
+	}
+
+	if len(c.FieldMappings) > 0 {
+		dataFieldTypeMap := map[string]string{}
+		for _, confItem := range c.FieldMappings {
+			imports = append(imports, confItem.Import)
+			dataFieldTypeMap[confItem.FieldKey] = confItem.Type
+		}
+		g.WithDataFieldTypeMap(dataFieldTypeMap)
+	}
+
 	// 关键：全局类型覆盖 - 必须在 UseDB 之后调用
 	// 使用正确的函数签名：func(columnType gorm.ColumnType) (dataType string)
 	g.WithDataTypeMap(map[string]func(columnType gorm.ColumnType) (dataType string){
@@ -99,6 +112,7 @@ func Model(c *config.ModelArgument) error {
 			return "int32"
 		},
 	})
+	g.WithImportPkgPath(imports...)
 
 	_, err := genModels(g, db, c.Tables)
 	if err != nil {
@@ -110,6 +124,7 @@ func Model(c *config.ModelArgument) error {
 	//
 
 	g.Execute()
+
 	err = genRepositories(g, c.Tables)
 	if err != nil {
 		return err
@@ -130,9 +145,29 @@ func genModels(g *gen.Generator, db *gorm.DB, tables []string) (models []interfa
 
 	models = make([]interface{}, len(tablesNameList))
 	for i, tableName := range tablesNameList {
+		klog.Infof("--------------- Generating model for table: %s", tableName)
 		models[i] = g.GenerateModel(tableName)
 	}
 	return models, nil
+}
+
+// applyFieldMappingToFiles 对生成的文件应用字段映射
+func applyFieldMappingToFiles(fieldMappings []config.FieldMappingConfig) error {
+	// 收集需要添加的导入包
+	imports := make(map[string]bool)
+	for _, mapping := range fieldMappings {
+		if mapping.Import != "" {
+			imports[mapping.Import] = true
+		}
+	}
+
+	// 构建字段映射映射表
+	fieldMapping := make(map[string]string)
+	for _, mapping := range fieldMappings {
+		fieldMapping[mapping.FieldKey] = mapping.Type
+	}
+
+	return err
 }
 
 // genRepositories 生成 Repo 层代码

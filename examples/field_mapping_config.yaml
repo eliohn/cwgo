@@ -1,0 +1,15 @@
+# 字段类型映射配置文件
+fieldMapping:
+  import: "goframe/model/enum"
+  admin_audit_log:
+    status: "enum.AdminAuditLogStatus"
+    type: "enum.AdminAuditLogType"
+  users.status:
+    type: "enum.UserStatus"
+    import: "your-project/enums"
+  orders.state:
+    type: "enum.OrderState"
+    import: "your-project/enums"
+  products.category:
+    type: "enum.ProductCategory"
+    import: "your-project/enums"
