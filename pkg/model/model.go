@@ -184,8 +184,11 @@ func genRepositories(g *gen.Generator, tables []string) error {
 	})
 	// 首先生成测试工具文件（只生成一次）
 	testUtilFile := filepath.Join(outPath, "test_util_test.go")
-	if err := generateFile(testUtilFile, templates.RepoTestUtilTemplate, map[string]interface{}{}); err != nil {
-		return fmt.Errorf("generate test util file failed: %w", err)
+	// 检查文件是否已存在，如果存在则跳过
+	if _, err := os.Stat(testUtilFile); os.IsNotExist(err) {
+		if err := generateFile(testUtilFile, templates.RepoTestUtilTemplate, map[string]interface{}{}); err != nil {
+			return fmt.Errorf("generate test util file failed: %w", err)
+		}
 	}
 
 	// 为每个表生成 Repo
@@ -201,13 +204,19 @@ func genRepositories(g *gen.Generator, tables []string) error {
 		}
 		// 生成实现文件
 		implFile := filepath.Join(outPath, fmt.Sprintf("%s.repo.go", modelNameLower))
-		if err := generateFile(implFile, templates.RepoImplTemplate, data); err != nil {
-			return fmt.Errorf("generate implementation file failed: %w", err)
+		// 检查文件是否已存在，如果存在则跳过
+		if _, err := os.Stat(implFile); os.IsNotExist(err) {
+			if err := generateFile(implFile, templates.RepoImplTemplate, data); err != nil {
+				return fmt.Errorf("generate implementation file failed: %w", err)
+			}
 		}
 		// 生成测试文件
 		testFile := filepath.Join(outPath, fmt.Sprintf("%s.repo_test.go", modelNameLower))
-		if err := generateFile(testFile, templates.RepoTestImplTemplate, data); err != nil {
-			return fmt.Errorf("generate test implementation file failed: %w", err)
+		// 检查文件是否已存在，如果存在则跳过
+		if _, err := os.Stat(testFile); os.IsNotExist(err) {
+			if err := generateFile(testFile, templates.RepoTestImplTemplate, data); err != nil {
+				return fmt.Errorf("generate test implementation file failed: %w", err)
+			}
 		}
 	}
 
