@@ -103,7 +103,7 @@ func Test{{.ModelName}}Repo_Create(t *testing.T) {
 		// 例如: Name: "test", Email: "test@example.com"
 	}
 	
-	err := repo.Create(ctx, {{.ModelNameLower}})
+	err = repo.Create(ctx, {{.ModelNameLower}})
 	assert.NoError(t, err)
 	assert.NotZero(t, {{.ModelNameLower}}.ID)
 }
@@ -121,7 +121,7 @@ func Test{{.ModelName}}Repo_GetByID(t *testing.T) {
 	{{.ModelNameLower}} := &model.{{.ModelName}}{
 		// 根据实际模型字段设置测试数据
 	}
-	err := repo.Create(ctx, {{.ModelNameLower}})
+	err = repo.Create(ctx, {{.ModelNameLower}})
 	require.NoError(t, err)
 	
 	// 测试根据ID获取记录
