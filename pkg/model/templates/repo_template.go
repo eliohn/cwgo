@@ -14,22 +14,23 @@ import (
 // {{.ModelName}}Repo {{.ModelName}} 数据访问实现
 type {{.ModelName}}Repo struct {
 	db *gorm.DB
+	ctx context.Context
 }
 
 // New{{.ModelName}}Repo 创建 {{.ModelName}} Repo
-func New{{.ModelName}}Repo(db *gorm.DB) *{{.ModelName}}Repo {
-	return &{{.ModelName}}Repo{db: db}
+func New{{.ModelName}}Repo(ctx context.Context, db *gorm.DB) *{{.ModelName}}Repo {
+	return &{{.ModelName}}Repo{ctx: ctx,db: db}
 }
 
 // Create 创建记录
-func (r *{{.ModelName}}Repo) Create(ctx context.Context, {{.ModelNameLower}} *model.{{.ModelName}}) error {
-	return r.db.WithContext(ctx).Create({{.ModelNameLower}}).Error
+func (r *{{.ModelName}}Repo) Create({{.ModelNameLower}} *model.{{.ModelName}}) error {
+	return r.db.WithContext(r.ctx).Create({{.ModelNameLower}}).Error
 }
 
 // GetByID 根据ID获取记录
-func (r *{{.ModelName}}Repo) GetByID(ctx context.Context, id {{.IDType}}) (*model.{{.ModelName}}, error) {
+func (r *{{.ModelName}}Repo) GetByID(id {{.IDType}}) (*model.{{.ModelName}}, error) {
 	var {{.ModelNameLower}} model.{{.ModelName}}
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&{{.ModelNameLower}}).Error
+	err := r.db.WithContext(r.ctx).Where("id = ?", id).First(&{{.ModelNameLower}}).Error
 	if err != nil {
 		return nil, err
 	}
@@ -37,26 +38,26 @@ func (r *{{.ModelName}}Repo) GetByID(ctx context.Context, id {{.IDType}}) (*mode
 }
 
 // Update 更新记录
-func (r *{{.ModelName}}Repo) Update(ctx context.Context, {{.ModelNameLower}} *model.{{.ModelName}}) error {
-	return r.db.WithContext(ctx).Save({{.ModelNameLower}}).Error
+func (r *{{.ModelName}}Repo) Update({{.ModelNameLower}} *model.{{.ModelName}}) error {
+	return r.db.WithContext(r.ctx).Save({{.ModelNameLower}}).Error
 }
 
 // Delete 删除记录
-func (r *{{.ModelName}}Repo) Delete(ctx context.Context, id {{.IDType}}) error {
-	return r.db.WithContext(ctx).Delete(&model.{{.ModelName}}{}, id).Error
+func (r *{{.ModelName}}Repo) Delete(id {{.IDType}}) error {
+	return r.db.WithContext(r.ctx).Delete(&model.{{.ModelName}}{}, id).Error
 }
 
 // List 获取记录列表
-func (r *{{.ModelName}}Repo) List(ctx context.Context, offset, limit int) ([]*model.{{.ModelName}}, error) {
+func (r *{{.ModelName}}Repo) List(offset, limit int) ([]*model.{{.ModelName}}, error) {
 	var {{.ModelNameLower}}s []*model.{{.ModelName}}
-	err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&{{.ModelNameLower}}s).Error
+	err := r.db.WithContext(r.ctx).Offset(offset).Limit(limit).Find(&{{.ModelNameLower}}s).Error
 	return {{.ModelNameLower}}s, err
 }
 
 // Count 获取记录总数
-func (r *{{.ModelName}}Repo) Count(ctx context.Context) (int64, error) {
+func (r *{{.ModelName}}Repo) Count() (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).Model(&model.{{.ModelName}}{}).Count(&count).Error
+	err := r.db.WithContext(r.ctx).Model(&model.{{.ModelName}}{}).Count(&count).Error
 	return count, err
 }
 `
@@ -82,7 +83,8 @@ func TestNew{{.ModelName}}Repo(t *testing.T) {
 	err := db.AutoMigrate(&model.{{.ModelName}}{})
 	require.NoError(t, err)
 	
-	repo := New{{.ModelName}}Repo(db)
+	ctx := context.Background()
+	repo := New{{.ModelName}}Repo(ctx, db)
 	
 	assert.NotNil(t, repo)
 	assert.Equal(t, db, repo.db)
@@ -94,8 +96,8 @@ func Test{{.ModelName}}Repo_Create(t *testing.T) {
 	err := db.AutoMigrate(&model.{{.ModelName}}{})
 	require.NoError(t, err)
 	
-	repo := New{{.ModelName}}Repo(db)
 	ctx := context.Background()
+	repo := New{{.ModelName}}Repo(ctx, db)
 	
 	// 测试创建记录
 	{{.ModelNameLower}} := &model.{{.ModelName}}{
@@ -103,7 +105,7 @@ func Test{{.ModelName}}Repo_Create(t *testing.T) {
 		// 例如: Name: "test", Email: "test@example.com"
 	}
 	
-	err = repo.Create(ctx, {{.ModelNameLower}})
+	err = repo.Create({{.ModelNameLower}})
 	assert.NoError(t, err)
 	assert.NotZero(t, {{.ModelNameLower}}.ID)
 }
@@ -114,18 +116,18 @@ func Test{{.ModelName}}Repo_GetByID(t *testing.T) {
 	err := db.AutoMigrate(&model.{{.ModelName}}{})
 	require.NoError(t, err)
 	
-	repo := New{{.ModelName}}Repo(db)
 	ctx := context.Background()
+	repo := New{{.ModelName}}Repo(ctx, db)
 	
 	// 先创建一个记录
 	{{.ModelNameLower}} := &model.{{.ModelName}}{
 		// 根据实际模型字段设置测试数据
 	}
-	err = repo.Create(ctx, {{.ModelNameLower}})
+	err = repo.Create({{.ModelNameLower}})
 	require.NoError(t, err)
 	
 	// 测试根据ID获取记录
-	result, err := repo.GetByID(ctx, {{.ModelNameLower}}.ID)
+	result, err := repo.GetByID({{.ModelNameLower}}.ID)
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, {{.ModelNameLower}}.ID, result.ID)
@@ -133,11 +135,12 @@ func Test{{.ModelName}}Repo_GetByID(t *testing.T) {
 
 func Test{{.ModelName}}Repo_GetByID_NotFound(t *testing.T) {
 	db := setupTestDB(t)
-	repo := New{{.ModelName}}Repo(db)
+	
 	ctx := context.Background()
+	repo := New{{.ModelName}}Repo(ctx, db)
 	
 	// 测试获取不存在的记录
-	result, err := repo.GetByID(ctx, 999)
+	result, err := repo.GetByID(999)
 	assert.Error(t, err)
 	assert.Nil(t, result)
 	assert.Equal(t, gorm.ErrRecordNotFound, err)
@@ -145,104 +148,109 @@ func Test{{.ModelName}}Repo_GetByID_NotFound(t *testing.T) {
 
 func Test{{.ModelName}}Repo_Update(t *testing.T) {
 	db := setupTestDB(t)
-	repo := New{{.ModelName}}Repo(db)
+	
 	ctx := context.Background()
+	repo := New{{.ModelName}}Repo(ctx, db)
 	
 	// 先创建一个记录
 	{{.ModelNameLower}} := &model.{{.ModelName}}{
 		// 根据实际模型字段设置测试数据
 	}
-	err := repo.Create(ctx, {{.ModelNameLower}})
+	err := repo.Create({{.ModelNameLower}})
 	require.NoError(t, err)
 	
 	// 更新记录
 	{{.ModelNameLower}}.UpdatedAt = time.Now()
-	err = repo.Update(ctx, {{.ModelNameLower}})
+	err = repo.Update({{.ModelNameLower}})
 	assert.NoError(t, err)
 }
 
 func Test{{.ModelName}}Repo_Delete(t *testing.T) {
 	db := setupTestDB(t)
-	repo := New{{.ModelName}}Repo(db)
+	
 	ctx := context.Background()
+	repo := New{{.ModelName}}Repo(ctx, db)
 	
 	// 先创建一个记录
 	{{.ModelNameLower}} := &model.{{.ModelName}}{
 		// 根据实际模型字段设置测试数据
 	}
-	err := repo.Create(ctx, {{.ModelNameLower}})
+	err := repo.Create({{.ModelNameLower}})
 	require.NoError(t, err)
 	
 	// 删除记录
-	err = repo.Delete(ctx, {{.ModelNameLower}}.ID)
+	err = repo.Delete({{.ModelNameLower}}.ID)
 	assert.NoError(t, err)
 	
 	// 验证记录已被删除
-	_, err = repo.GetByID(ctx, {{.ModelNameLower}}.ID)
+	_, err = repo.GetByID({{.ModelNameLower}}.ID)
 	assert.Error(t, err)
 	assert.Equal(t, gorm.ErrRecordNotFound, err)
 }
 
 func Test{{.ModelName}}Repo_List(t *testing.T) {
 	db := setupTestDB(t)
-	repo := New{{.ModelName}}Repo(db)
+	
 	ctx := context.Background()
+	repo := New{{.ModelName}}Repo(ctx, db)
 	
 	// 创建多个测试记录
 	for i := 0; i < 5; i++ {
 		{{.ModelNameLower}} := &model.{{.ModelName}}{
 			// 根据实际模型字段设置测试数据
 		}
-		err := repo.Create(ctx, {{.ModelNameLower}})
+		err := repo.Create({{.ModelNameLower}})
 		require.NoError(t, err)
 	}
 	
 	// 测试获取列表
-	results, err := repo.List(ctx, 0, 10)
+	results, err := repo.List(0, 10)
 	assert.NoError(t, err)
 	assert.Len(t, results, 5)
 }
 
 func Test{{.ModelName}}Repo_List_WithPagination(t *testing.T) {
 	db := setupTestDB(t)
-	repo := New{{.ModelName}}Repo(db)
+	
 	ctx := context.Background()
+	repo := New{{.ModelName}}Repo(ctx, db)
 	
 	// 创建多个测试记录
 	for i := 0; i < 10; i++ {
 		{{.ModelNameLower}} := &model.{{.ModelName}}{
 			// 根据实际模型字段设置测试数据
 		}
-		err := repo.Create(ctx, {{.ModelNameLower}})
+		err := repo.Create({{.ModelNameLower}})
 		require.NoError(t, err)
 	}
 	
 	// 测试分页
-	results, err := repo.List(ctx, 0, 5)
+	results, err := repo.List(0, 5)
 	assert.NoError(t, err)
 	assert.Len(t, results, 5)
 	
-	results, err = repo.List(ctx, 5, 5)
+	results, err = repo.List(5, 5)
 	assert.NoError(t, err)
 	assert.Len(t, results, 5)
 }
 
 func Test{{.ModelName}}Repo_Count(t *testing.T) {
 	db := setupTestDB(t)
-	repo := New{{.ModelName}}Repo(db)
+	
 	ctx := context.Background()
+	repo := New{{.ModelName}}Repo(ctx, db)
 	
 	// 创建多个测试记录
 	for i := 0; i < 3; i++ {
 		{{.ModelNameLower}} := &model.{{.ModelName}}{
 			// 根据实际模型字段设置测试数据
 		}
-		err := repo.Create(ctx, {{.ModelNameLower}})
+		err := repo.Create({{.ModelNameLower}})
 		require.NoError(t, err)
 	}
 	
 	// 测试计数
-	count, err := repo.Count(ctx)
+	count, err := repo.Count()
 	assert.NoError(t, err)
 	assert.Equal(t, int64(3), count)
 }
