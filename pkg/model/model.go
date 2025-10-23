@@ -111,6 +111,42 @@ func Model(c *config.ModelArgument) error {
 			}
 			return "int32"
 		},
+		// 处理可为空的时间类型字段，使用指针类型
+		"datetime": func(columnType gorm.ColumnType) (dataType string) {
+			nullable, _ := columnType.Nullable()
+			if nullable {
+				return "*time.Time"
+			}
+			return "time.Time"
+		},
+		"time": func(columnType gorm.ColumnType) (dataType string) {
+			nullable, _ := columnType.Nullable()
+			if nullable {
+				return "*time.Time"
+			}
+			return "time.Time"
+		},
+		"date": func(columnType gorm.ColumnType) (dataType string) {
+			nullable, _ := columnType.Nullable()
+			if nullable {
+				return "*time.Time"
+			}
+			return "time.Time"
+		},
+		"timestamp": func(columnType gorm.ColumnType) (dataType string) {
+			nullable, _ := columnType.Nullable()
+			if nullable {
+				return "*time.Time"
+			}
+			return "time.Time"
+		},
+		"json": func(columnType gorm.ColumnType) (dataType string) {
+			nullable, _ := columnType.Nullable()
+			if nullable {
+				return "*string"
+			}
+			return "string"
+		},
 	})
 	g.WithImportPkgPath(imports...)
 
