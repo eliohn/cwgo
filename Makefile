@@ -17,3 +17,8 @@ build:
 
 install: build
 	cp cwgo.exe C:\Users\yihui\go\bin
+
+
+build-macos:
+	@GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o cwgo .
+	@echo "macOS executable built as cwgo-macos"
